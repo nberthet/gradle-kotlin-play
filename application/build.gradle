@@ -1,0 +1,9 @@
+apply plugin: 'play'
+apply plugin: 'kotlin'
+
+dependencies {
+    play "com.typesafe.play:play-java-ws_$scala_version:$play_version"
+    play "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+
+    play project(":library")
+}

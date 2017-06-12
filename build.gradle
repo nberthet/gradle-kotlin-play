@@ -1,0 +1,81 @@
+buildscript {
+    ext.java_version = '1.8'
+    ext.scala_version = '2.11'
+    ext.kotlin_version = '1.1.2-2'
+    ext.play_version = '2.5.14'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+group 'com.github.nberthet.templates'
+version '0.0.1-SNAPSHOT'
+
+apply plugin: 'idea'
+
+// Update the configuration of the Play subproject(s)
+// all the dirty work is done here to keep the subprojects config exempt of "hacks"
+configure(subprojects.findAll { it.name == "application" }) {
+    model {
+        components {
+            play {
+                platform play: play_version, scala: scala_version, java: java_version
+            }
+        }
+    }
+
+    // Ensures kotlin sources get compiled when we build the Play project
+    tasks.whenTaskAdded {
+        if (it.name == "compilePlayBinaryScala") {
+            it.dependsOn compileKotlin, copyMainKotlinClasses
+        }
+        if (it.name == "compilePlayBinaryTests") {
+            it.dependsOn compileTestKotlin, copyTestKotlinClasses
+        }
+    }
+
+    afterEvaluate {
+        // play plugin has its own test tasks, so our tests will be executed even when skipping the "test" task
+        test.enabled = false
+
+		// Kotlin sources are compiled to the same output directory as Play's to let
+		// Play see Kotlin classes and use them
+        sourceSets {
+            main {
+                kotlin {
+                    srcDirs += 'app'
+                }
+
+                compileClasspath += configurations.play
+                output.classesDir = 'build/playBinary/classes'
+            }
+            test {
+                kotlin {
+                    srcDirs += 'test'
+                }
+
+                compileClasspath += configurations.playTest
+                output.classesDir = 'build/playBinary/testClasses'
+            }
+        }
+    }
+}
+
+subprojects {
+    repositories {
+        jcenter()
+        maven{
+            name = "typesafe-maven-release"
+            url = "https://repo.typesafe.com/typesafe/maven-releases"
+        }
+        ivy {
+            name "typesafe-ivy-release"
+            url "https://repo.typesafe.com/typesafe/ivy-releases"
+            layout "ivy"
+        }
+    }
+}
